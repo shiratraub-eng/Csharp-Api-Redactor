@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redactor-rules-config
+  namespace: default
+data:
+  rules.yaml: |
+    # Here goes your YAML rules content (or mounted externally)
+    key_rules:
+      - name: "Sensitive Keys"
+        match:
+          keys: ["password", "authorization", "card_number"]
+    value_rules:
+      - name: "Email Regex"
+        pattern: "[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-redactor-service
+  namespace: default
+  labels:
+    app: api-redactor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-redactor
+  template:
+    metadata:
+      labels:
+        app: api-redactor
+    spec:
+      containers:
+      - name: redactor
+        image: api-redactor:latest
+        imagePullPolicy: IfNotPresent
+        # If running in service mode:
+        # args: ["--serve", "--addr", ":8080", "--rules", "/etc/redactor/rules.yaml"]
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/redactor
+      volumes:
+      - name: config-volume
+        configMap:
+          name: redactor-rules-config
